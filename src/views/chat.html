@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Title</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <style>
+        .footer {
+            position: absolute;
+            bottom: 0;
+            width: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-4">
+        <center>
+            <h1>--- > [ Chat System ] <--- </h1><br>
+
+        </center>
+        <div class="row">
+            <div class="col-4" id='roomNumber'>
+                <div class="border" style="overflow: auto;height: 250px;">
+                    <div class="alert alert-info text-center" role="alert">
+                        รายชื่อห้อง
+                    </div>
+
+                    <div class="container">
+                        <div class="listRoom " id="listRoom">
+
+                        </div>
+                        <br>
+                        <div class="row">
+                            <div class="container text-right mb-3">
+                                <button class="btn btn-info" id='createdRoom' onclick="createdRoom()">เพิ่มห้อง</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <br>
+                <div class="border" style="overflow: auto;height: 250px;">
+                    <div class="alert alert-info text-center" role="alert">
+                        User Online
+                    </div>
+
+                    <center>
+                        <div class="container">
+                            <div class="listUserOnline" id="listUserOnline">
+                                <!-- list User Online  -->
+                            </div>
+                            <br>
+
+                        </div>
+
+                    </center>
+                </div>
+            </div>
+
+            <!-- จำนวนคน : <label for="" id='count'> 0 </label> -->
+
+            <div class="col-8">
+
+                <div class="border" style="width: 100%;height: 500px;overflow: auto;">
+                    <div class="message" id='message' style="width: 50%;overflow: auto;">
+
+                    </div>
+
+
+
+                </div>
+                <div class="footer">
+                    <input type="text" id="msg">
+                    <button class="btn btn-info" onclick="sendMsg()">ส่ง</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+
+    <script>
+        var socket;
+        var listRoom = [];
+        var fistReload = false;
+        var roomCurrent;
+        socket = io("http://192.168.47.124:3000");
+
+
+        socket.on('connect', () => {
+            let user = prompt('what is your name ? :');
+            socket.emit('created User', user);
+        })
+
+        socket.on('received-Msg', (user, msg) => {
+            document.getElementById('message').innerHTML += (user + " : " + msg + "<br>")
+        })
+
+        socket.on('updateRoom', (room) => {
+            document.getElementById('listRoom').innerHTML = "";
+            listRoom = [];
+            for (let i = 0; i < room.length; i++) {
+                listRoom.push(room[i])
+                document.getElementById('listRoom').innerHTML += `<div class='small' id='userOnline-${room[i]}' text-right'>ออนไลน์ : 0 user</div><button  id='${room[i]}' class='mb-2 btn btn-secondary btn-sm' onclick = 'changedRoom("${room[i]}")'  style = 'height: 20%;width: 100%;' ># ${room[i]} #</button>`;
+            }
+            if (fistReload === false) {
+                roomCurrent = listRoom[0];
+                document.getElementById(roomCurrent).setAttribute('class', 'mb-2 btn btn-info btn-sm');
+                fistReload = true;
+            }
+            document.getElementById(roomCurrent).setAttribute('class', 'mb-2 btn btn-info btn-sm');
+
+        })
+
+        socket.on('updateUserOnline', (user) => {
+            console.log(JSON.stringify(user));
+            let list = Object.keys(user)
+            document.getElementById('listUserOnline').innerHTML = "";
+            for (let i = 0; i < list.length; i++) {
+                document.getElementById('listUserOnline').innerHTML += list[i] + "<br>";
+            }
+
+        })
+
+        socket.on('updateNumberOfUsers',(data)=>{
+            let keys = Object.keys(data)
+            let values = Object.values(data)
+            for(let i = 0 ;i<keys.length;i++){
+                document.getElementById('userOnline-'+keys[i]).innerHTML = `ออนไลน์ : ${values[i]} user`;
+            }
+
+        })
+
+
+        function sendMsg() {
+                socket.emit('sendMsg', document.getElementById('msg').value)
+                document.getElementById('msg').value = "";
+                // console.log(document.getElementById('msg').value);
+                // document.getElementById('message').innerHTML = 'asd';
+                // document.getElementById('meg').value = "";
+            }
+
+        function createdRoom() {
+                // if(socket != null)socket.disconnect()
+                var user = prompt("Please enter your name room");
+                socket.emit('create-room', user);
+                setTimeout(function () { changedRoom(user) }, 500);
+            }
+
+        function changedRoom(roomName) {
+                roomCurrent = roomName;
+                for (let i = 0; i < listRoom.length; i++) {
+                    if (roomName == listRoom[i]) {
+                        document.getElementById(roomName).setAttribute('class', 'justify-content-center mt-2 btn btn-info btn-sm');
+                    } else {
+                        document.getElementById(listRoom[i]).setAttribute('class', 'justify-content-center mt-2 btn btn-secondary btn-sm');
+                    }
+                }
+                socket.emit('joinRoom', roomName);
+            }
+
+
+        // socket.on('buildRoom', (msg) => {
+        //     console.log(msg);
+        //     document.getElementById('roomNumber').innerHTML += "<button class='row border justify-content-center' onclick = 'roomTwo()' id='"+msg+"' style = 'height: 20%;width: 100%;' >" + msg + "</button> ";
+        // })
+
+        // socket.on('chat message', (msg) => {
+        //     document.getElementById('message').innerHTML += (msg + "<br>")
+        // })
+
+
+        // socket.on('checkDeleteRoom', (list) => {
+        //     console.log(list);
+        //     document.getElementById('message').innerHTML += (msg + "<br>")
+        // })
+
+
+    </script>
+
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>
